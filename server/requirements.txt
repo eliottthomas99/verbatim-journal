@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+requests
+python-dotenv
+chromadb>=1.0
+sentence-transformers

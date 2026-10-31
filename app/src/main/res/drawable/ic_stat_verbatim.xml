@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Small monochrome striped V for the notification and the Quick Settings tile
+     (Android only uses its alpha channel). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="58"
+    android:viewportHeight="50"
+    android:tint="?android:attr/colorControlNormal">
+    <group>
+        <clip-path android:pathData="M0,0L14,0L29,34L44,0L58,0L36,50L22,50Z" />
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M0,-2h4v54h-4z M6,-2h4v54h-4z M12,-2h4v54h-4z M18,-2h4v54h-4z M24,-2h4v54h-4z M30,-2h4v54h-4z M36,-2h4v54h-4z M42,-2h4v54h-4z M48,-2h4v54h-4z M54,-2h4v54h-4z" />
+    </group>
+</vector>

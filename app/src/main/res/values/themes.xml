@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window colour shown before Compose draws (no white flash at launch). -->
+    <style name="Theme.Verbatim" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#FFFBF7F0</item>
+    </style>
+</resources>

@@ -1,0 +1,46 @@
+# Android / Gradle
+.gradle/
+build/
+*/build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Python server
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# Server data and models (large or private)
+/data/
+server/uploads/
+server/db/
+server/chroma_db/
+server/models/
+*.bin
+*.wav
+*.m4a
+*.log
+
+# Never commit a journal or a key, wherever it ends up
+*.db
+*.sqlite
+*.sqlite3
+*.p12
+*.pem
+results*.json
+
+# Backups
+*.bak-*
+
+# Pinned on-device assets fetched by tools/prepare_whistle.py
+.local-models/

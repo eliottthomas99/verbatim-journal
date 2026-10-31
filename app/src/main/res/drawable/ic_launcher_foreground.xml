@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Verbatim icon: a letter V cut into vertical "sound" stripes (gold centre). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group>
+        <clip-path android:pathData="M25,30L39,30L54,64L69,30L83,30L61,80L47,80Z" />
+        <path
+            android:fillColor="#FFF5EBDD"
+            android:pathData="M25,28h4v54h-4z M31,28h4v54h-4z M37,28h4v54h-4z M43,28h4v54h-4z M61,28h4v54h-4z M67,28h4v54h-4z M73,28h4v54h-4z M79,28h4v54h-4z" />
+        <path
+            android:fillColor="#FFFFC86B"
+            android:pathData="M49,28h4v54h-4z M55,28h4v54h-4z" />
+    </group>
+</vector>
