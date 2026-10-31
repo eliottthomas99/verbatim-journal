@@ -47,7 +47,10 @@ def _normalize(text: str) -> str:
 
 
 def _number(word: str) -> int:
-    return int(word) if word.isdigit() else NUMBERS[word]
+    count = int(word) if word.isdigit() else NUMBERS[word]
+    if count >= 100_000:
+        raise ValueError("Date offset is too large")
+    return count
 
 
 def _month_period(year: int, month: int) -> Period:
@@ -83,12 +86,21 @@ def _explicit_date(q: str, today: date) -> Period | None:
         day_number = None
     if day_number:
         month = MONTHS[month_name]
+        if not year and re.search(LAST_YEAR, q):
+            year = str(today.year - 1)
         if year:
             day = date(int(year), month, int(day_number))
         else:
-            day = date(today.year, month, int(day_number))
-            if day > today:
-                day = date(today.year - 1, month, int(day_number))
+            # Find the most recent valid occurrence, including February 29.
+            for candidate in range(today.year, max(0, today.year - 8), -1):
+                try:
+                    day = date(candidate, month, int(day_number))
+                except ValueError:
+                    continue
+                if day <= today:
+                    break
+            else:
+                raise ValueError("Invalid calendar day")
         return day, day
 
     if m := re.search(rf"\b({MONTH}) (\d{{4}})\b", q):
@@ -169,11 +181,21 @@ def _current_or_bare(q: str, today: date) -> Period | None:
 def parse_period(question: str, today: date) -> Period | None:
     """Return the inclusive (first day, last day) the question asks about, or None."""
     q = _normalize(question)
+    # Do not turn an unsupported range into its first recognizable day.
+    # A later parser can support these without silently narrowing the search now.
+    if re.search(r"\b(between|entre|from .+ to|du .+ au)\b", q):
+        return None
+    # Explicit dates used as task deadlines refer to when work is due, not
+    # when it was recorded. Relative past cues remain useful ("asked yesterday").
+    deadline = (TASK.search(q) or re.search(r"\b(deadline|due|echeance)\b", q)) and re.search(
+        r"\b(by|before|until|avant|pour|d'ici|jusqu'a)\b", q
+    )
     try:
-        period = _explicit_date(q, today) or _relative_past(q, today)
+        relative = _relative_past(q, today)
+        period = relative if deadline else (_explicit_date(q, today) or relative)
         if not period and not FUTURE.search(q) and not TASK.search(q):
             period = _current_or_bare(q, today)
-    except ValueError:  # "le 31 février"
+    except (ValueError, OverflowError):  # invalid calendar day or oversized offset
         return None
     if period and period[0] > today:
         return None  # nothing can have been recorded in the future

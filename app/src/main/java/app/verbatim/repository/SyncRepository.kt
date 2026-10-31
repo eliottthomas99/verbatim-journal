@@ -8,6 +8,7 @@ import app.verbatim.data.local.RecordingDao
 import app.verbatim.data.model.Recording
 import app.verbatim.network.NetworkClient
 import app.verbatim.network.SubmitTranscriptRequest
+import app.verbatim.network.serverRecordingId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -104,11 +105,12 @@ class SyncRepository(
             syncLock.withLock {
                 // Re-read under the lock: a sync that just finished may have set the server id.
                 val recording = dao.getRecordingById(recordingId) ?: return@withLock
+                val serverId = recording.serverRecordingId?.takeIf { it.isNotBlank() }
+                    ?: serverRecordingId(recording.filename, recording.timestamp)
+                // Persist before removing the row: survive a crash or a lost upload response.
+                check(prefs.edit().putStringSet(KEY_PENDING_DELETES, pendingDeletes() + serverId).commit())
                 dao.deleteRecording(recordingId)
                 File(context.filesDir, recording.filename).delete()
-                recording.serverRecordingId?.let { serverId ->
-                    prefs.edit().putStringSet(KEY_PENDING_DELETES, pendingDeletes() + serverId).apply()
-                }
                 flushDeletes()
             }
         }
@@ -169,7 +171,7 @@ class SyncRepository(
                 )
             )
             val body = response.body()
-            if (response.isSuccessful && body != null) {
+            if (response.isSuccessful && body != null && body.recording_id.isNotBlank()) {
                 dao.markUploaded(recordingId, body.recording_id)
                 // The server summarizes while handling the request, so the
                 // summary comes back in the same response.

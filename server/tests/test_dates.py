@@ -58,3 +58,30 @@ def test_past_periods(question, start, end):
 ])
 def test_questions_without_a_past_period(question):
     assert parse_period(question, TODAY) is None
+
+
+@pytest.mark.parametrize("question, expected", [
+    ("What did I say on March 12 last year?", date(2025, 3, 12)),
+    ("Qu'ai-je dit le 12 mars l'an dernier ?", date(2025, 3, 12)),
+    ("What did I say on February 29?", date(2024, 2, 29)),
+])
+def test_day_year_qualifiers_and_leap_days(question, expected):
+    assert parse_period(question, TODAY) == (expected, expected)
+
+
+def test_past_recording_cue_survives_a_task_deadline():
+    assert parse_period("What did I say yesterday that I need to finish before Friday?", TODAY) == (
+        date(2026, 10, 30), date(2026, 10, 30))
+
+
+@pytest.mark.parametrize("question", [
+    "What do I need to finish by October 30 2026?",
+    "Que dois-je finir avant le 30 octobre 2026 ?",
+    "What is due by 2026-10-30?",
+    "What did I do between March 1 and March 31?",
+    "Mes notes du 1 mars au 31 mars",
+    "What happened 999999999999999999 days ago?",
+    "il y a 100000 semaines",
+])
+def test_do_not_silently_narrow_deadlines_ranges_or_overflows(question):
+    assert parse_period(question, TODAY) is None

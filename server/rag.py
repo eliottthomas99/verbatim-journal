@@ -19,8 +19,9 @@ ANSWER_PROMPT = (
     "journal: notes to self and conversations). Today is {today}. Use ONLY the "
     "context below; it comes from automatic speech recognition and may contain "
     "errors. Mention when things were said (day, time) when useful. If asked "
-    "to summarize a period, summarize all the recordings in the context: they "
-    "are from that period. If the context does not contain the answer, say so "
+    "to summarize a period, cover the available recordings in the context: they "
+    "are from that period. Excerpts may be shortened: do not claim exhaustive "
+    "coverage. If the context does not contain the answer, say so "
     "plainly. Answer in the "
     "language of the question, briefly, in plain text without Markdown (no "
     "asterisks, no headings): it is shown in a phone app and may be read "
@@ -51,39 +52,41 @@ def _header(recording_id: str, timestamp_ms: int) -> str:
 def answer_question(question: str, recordings_between) -> dict:
     """recordings_between(start_ms, end_ms) -> [(recording_id, timestamp, transcript, summary)]."""
     date_range = extract_date_range(question)
-    store = get_embedding_store()
     parts, sources, used = [], [], 0
 
-    def add(recording_id, text):
+    def add(recording_id, text, limit=None):
         nonlocal used
-        text = text[: max(0, config.CONTEXT_CHARS - used)]
+        separator = "\n\n---\n\n" if parts else ""
+        available = max(0, config.CONTEXT_CHARS - used)
+        if limit is not None:
+            available = min(available, limit)
+        text = text[: max(0, available - len(separator))]
         if text:
             parts.append(text)
-            used += len(text)
-            if recording_id not in sources:
+            used += len(separator) + len(text)
+            if recording_id is not None and recording_id not in sources:
                 sources.append(recording_id)
 
     rows = recordings_between(*date_range) if date_range else []
     if date_range and not rows:
-        # Nothing recorded in that period: say so, but still search everything
-        # (the period may have been misread, or the answer is elsewhere).
         start = datetime.fromtimestamp(date_range[0] / 1000).strftime("%Y-%m-%d")
         end = datetime.fromtimestamp(date_range[1] / 1000).strftime("%Y-%m-%d")
-        parts.append(f"(Note: there are no recordings between {start} and {end}. "
-                     "The excerpts below come from other dates.)")
-        date_range = None
+        return {"answer": f"No recordings between {start} and {end}.", "sources": []}
 
+    store = get_embedding_store()
     if date_range:
         first = datetime.fromtimestamp(date_range[0] / 1000).strftime("%Y-%m-%d")
         last = datetime.fromtimestamp(date_range[1] / 1000).strftime("%Y-%m-%d")
-        parts.append(f"(The question is about {first} to {last}. "
-                     "These are all the recordings of that period, even if there are few.)")
-        # Share the budget so every recording of the period is represented.
-        share = config.CONTEXT_CHARS // max(1, len(rows)) if rows else 0
+        add(None, f"(Recordings from {first} to {last}; excerpts may be shortened.)")
+        # At most half the remaining space for overviews, including headers.
+        # Keep the other half for relevant chunks, including long-recording tails.
+        share = max(0, config.CONTEXT_CHARS - used) // 2 // len(rows)
         for recording_id, timestamp, transcript, summary in rows:
             body = f"Summary: {summary}\n" if summary else ""
             body += f"Transcript: {transcript}"
-            add(recording_id, f"{_header(recording_id, timestamp)}\n{body[:share]}")
+            overview = f"{_header(recording_id, timestamp)}\n{body}"
+            if share > len(_header(recording_id, timestamp)) + 10:
+                add(recording_id, overview, share)
         chunks = store.search(question, limit=6, start_ms=date_range[0], end_ms=date_range[1])
     else:
         chunks = store.search(question, limit=8)

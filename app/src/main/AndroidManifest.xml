@@ -7,14 +7,6 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Android 11+ hides other apps by default: declare that we look for a
-         text-to-speech engine, to read answers aloud. -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
-    </queries>
-
     <application
         android:name=".JournalApplication"
         android:usesCleartextTraffic="true"

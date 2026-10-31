@@ -34,13 +34,26 @@ Your computer doesn't have to stay on. While it's off, the phone keeps recording
 ## What you need
 
 - An **arm64 Android phone**, Android 8 or newer. The accurate speech model uses about 1 GB of memory more while transcribing.
-- A **computer for the server**: Python 3.12 and a local model server. A GPU with 4 GB of memory is enough for the tested model.
+- A **computer for the server**: Python 3.12 or 3.13 and a local model server. The fresh dependency install and automated tests were checked with Python 3.13. A GPU with 4 GB of memory is enough for the tested model.
 - A **private network** between the two, such as [Tailscale](https://tailscale.com) (free for personal use).
 - To build the app: Android Studio, with the SDK and NDK it offers to install.
 
 ## 1. Start a model
 
-Any server with an OpenAI-compatible `/v1/chat/completions` endpoint should work: llama.cpp, llama-swap, LM Studio, Ollama. The tested route is [llama.cpp](https://github.com/ggml-org/llama.cpp) with **Gemma 4 E4B, Q4_K_M** (a 5.3 GB GGUF file, from `lmstudio-community/gemma-4-E4B-it-GGUF` on Hugging Face). You download the model yourself, under its own licence:
+Servers with an OpenAI-compatible `/v1/chat/completions` endpoint are candidates, including llama.cpp, llama-swap, LM Studio and Ollama. Only the route below has been exercised with this release's server; compatibility with the others is not verified.
+
+The tested runtime is [llama.cpp b11960](https://github.com/ggml-org/llama.cpp/releases/tag/b11960), with **Gemma 4 E4B, Q4_K_M**. For Windows x64 with an NVIDIA GPU, get `llama-b11960-bin-win-cuda-12.4-x64.zip` and `cudart-llama-bin-win-cuda-12.4-x64.zip` from that release and extract both into the same folder. A compatible NVIDIA driver is required. Other hardware needs the appropriate runtime build and has not been tested here.
+
+The 5.3 GB model is [`gemma-4-E4B-it-Q4_K_M.gguf`](https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/blob/99210a71094c6aa8559f764e0cadedd7d89de94d/gemma-4-E4B-it-Q4_K_M.gguf), from `lmstudio-community/gemma-4-E4B-it-GGUF`. Read its licence, then download it yourself. In PowerShell, from the runtime folder:
+
+```powershell
+curl.exe --fail --location --output gemma-4-E4B-it-Q4_K_M.gguf https://huggingface.co/lmstudio-community/gemma-4-E4B-it-GGUF/resolve/99210a71094c6aa8559f764e0cadedd7d89de94d/gemma-4-E4B-it-Q4_K_M.gguf
+Get-FileHash gemma-4-E4B-it-Q4_K_M.gguf -Algorithm SHA256
+```
+
+Expected SHA-256: `0ffb122c8b6921f13cbc34186e052524d0b5803b17f4867b7197a561400b3770`. The source, filename, size and checksum were checked against the publisher's metadata; this exact download command has not yet been run end to end. On Linux/macOS use `curl` instead of `curl.exe` and `sha256sum`/`shasum -a 256` to verify it.
+
+Start the model (in PowerShell use `.\llama-server.exe` instead of `llama-server`):
 
 ```
 llama-server -m gemma-4-E4B-it-Q4_K_M.gguf -ngl 99 -c 16384 --jinja --host 127.0.0.1 --port 8080 -a gemma-4-e4b
@@ -51,14 +64,16 @@ The image file (`mmproj`) isn't needed. Bigger models usually write better answe
 ## 2. Start the server
 
 ```
-git clone <this repository>
-cd <repository>
+git clone https://github.com/eliottthomas99/verbatim-journal.git
+cd verbatim-journal
 python -m venv .venv
-.venv\Scripts\activate            # Linux and macOS: source .venv/bin/activate
-pip install -r server/requirements.txt
+.\.venv\Scripts\Activate.ps1     # Linux and macOS: source .venv/bin/activate
+python -m pip install -r server/requirements.txt
 ```
 
-Copy `.env.example` to `.env`, then set two values:
+If PowerShell blocks activation, use `.\.venv\Scripts\python.exe` in place of `python` in the server commands; no execution-policy change is needed. On some Linux/macOS systems the initial command is `python3 -m venv .venv`.
+
+Copy `.env.example` to `.env` (`Copy-Item .env.example .env` in PowerShell; `cp .env.example .env` on Linux/macOS), then set two values:
 
 ```
 VERBATIM_API_TOKEN=<output of: python -c "import secrets; print(secrets.token_urlsafe(32))">
@@ -74,25 +89,29 @@ python -m uvicorn server.main:app --host <your Tailscale IP> --port 8000
 
 `tailscale ip -4` prints that address. Your firewall may ask you to allow Python on this network; allow only private networks.
 
+Run only one server process for a data directory: do not add `--workers` or run a second instance against the same journal. Index updates and deletions are coordinated within that process.
+
 Your journal is stored in `data/`. Back up that folder and `.env`; both are ignored by git.
 
 > **Never expose this server to the public internet.** The token is sent over plain HTTP, which is only safe inside an encrypted private network like Tailscale. Don't forward the port on your router.
 
-To check a server and model with fictional recordings, use an **empty** data directory and run `python tools/e2e_test.py results.json http://<address>:8000`, with `VERBATIM_API_TOKEN` set in that terminal.
+To smoke-test a server and model with fictional recordings, start it with `VERBATIM_DATA_DIR` pointing to a new **empty** folder, then run `python tools/e2e_test.py results.json http://<address>:8000`, with `VERBATIM_API_TOKEN` set in that terminal. This adds invented entries and does not remove them. Scores are heuristics: read every answer for factual accuracy, language and correct refusal when information is absent.
 
 ## 3. Build the app
 
-Open the project once in Android Studio and let it sync, which installs what's missing and creates `local.properties`. To build from a terminal instead, set `ANDROID_HOME` to your Android SDK folder and `JAVA_HOME` to Android Studio's bundled JDK (its `jbr` folder).
+The build requires JDK 25, Android SDK 37, NDK 28.2.13676358 and CMake 3.22.1. Open the project in a current Android Studio and let it sync/install the requested components and create `local.properties`. To build from a terminal instead, set `ANDROID_HOME` to your Android SDK folder and `JAVA_HOME` to Android Studio's bundled JDK 25 (its `jbr` folder). In PowerShell use `$env:ANDROID_HOME = "<SDK folder>"` and `$env:JAVA_HOME = "<JDK folder>"`; replace the placeholders with your installation paths.
 
 The speech and voice models aren't in git. Fetch them once, with checksums verified, then build with a phone plugged in with USB debugging on:
 
 ```
 python -I tools/prepare_whistle.py
 python -I tools/prepare_tts.py
-gradlew installDebug              # Linux and macOS: ./gradlew installDebug
+.\gradlew.bat installDebug        # Linux and macOS: ./gradlew installDebug
 ```
 
 The APK is about 90 MB.
+
+For a PC-only check, use `.\gradlew.bat assembleDebug testDebugUnitTest` instead: it builds without installing or recording anything. Server tests need `python -m pip install -r server/requirements-dev.txt`, then `python -m pytest server/tests`. These server tests use fake model/index components and invented data, not downloaded model weights.
 
 ## 4. Connect them
 
@@ -106,12 +125,12 @@ The APK is about 90 MB.
 | | |
 |---|---|
 | Server and model | Windows 11, a 4 GB laptop GPU, Gemma 4 E4B Q4_K_M (3.5 GB of GPU memory, a few seconds per summary) |
-| Quality check | `tools/e2e_test.py`, fictional recordings: French stayed French, English stayed English, and the right recording was found for every question |
+| Earlier model smoke check | Invented French/English entries were manually reviewed; the earlier script reported 14/14 retrieval checks. That score allowed extra sources and automatically passed empty expectations, so it is not proof of 14 correct answers |
 | Phone to server | An arm64 Android phone over Tailscale: first-run setup, wrong and right token, offline note syncing on connect, summaries, questions in the app, deleting from both sides |
-| Fresh install | This README's server steps on a clean copy with an empty model cache |
-| Automated tests | `pytest server/tests` (server, with a fake model) and `gradlew testDebugUnitTest` (app) |
+| Fresh clone audit | Fresh Python 3.13 environment, dependency install, checksum-verified Whistle/Piper/runtime downloads, Android debug build and JVM tests; existing Android SDK/JDK and Gradle dependency caches used |
+| Automated regressions | Server tests with fake model/index components cover failed sync/deletion races, durable index repair, date handling, context limits and invalid model output; JVM tests cover recording IDs and address/token pairing |
 
-Only this route has been tested from start to finish. Other model servers and operating systems should work but haven't been verified on this version.
+The Gemma download and a complete fresh setup through a real-model answer have not been repeated end to end. The strengthened smoke script and changed retrieval prompts have not yet been re-run with a real model. Parakeet, spoken questions, reading aloud and a real multi-minute speech recording were tested before the package rename, but have **not** been re-tested on the renamed app. This audit-fix build has not been installed on a phone; its deletion and speech-output changes still need device validation. Other model servers and operating systems remain unverified.
 
 ## Known limits
 
@@ -121,9 +140,11 @@ Only this route has been tested from start to finish. Other model servers and op
 - **Sources may include unrelated recordings** when a question has no date, because search always returns the closest matches.
 - **The light speech model (Whistle) is mediocre on real French speech.** Parakeet is much better. Recordings up to 5 minutes have been measured with it; longer ones are untested. A sentence falling on one of its 30-second cuts can lose accuracy.
 - **Editing a transcript drops its timed lines**, so tap-to-play no longer works on that recording.
-- **Date questions** understand common French and English phrasings; anything else searches all dates. The server's clock and time zone are used.
+- **Date questions** understand common French and English phrasings; unsupported expressions (including date ranges such as "between March 1 and March 31") search all dates, never just the first date in the range. A recognized period with no entries returns no recordings, without searching other dates. The server's clock and time zone are used.
 - **Long transcripts** are cut to `VERBATIM_CONTEXT_CHARS` characters for the summary. They're still stored and searchable in full.
 - **No export or import yet**, and transcripts are stored unencrypted on the phone's private storage and on your computer.
+- **Deletion keeps an opaque ID marker on the server**, not the transcript or summary, to prevent a late upload or retry from recreating deleted text. Index failures are retried at startup, before questions and during later syncs/deletions; questions fail rather than use an index awaiting repair. Deletion does not erase your backups.
+- **Reading aloud uses bundled voices only.** If they fail, the app shows an error instead of passing private answer text to a system speech engine that might use the cloud.
 - **The privacy claim has a boundary.** Tests measured no outgoing traffic from the Whistle engine during transcription, but its closed native library hasn't had a full privacy audit. The app downloads Parakeet only if you ask.
 
 ## Recording law

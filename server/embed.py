@@ -125,18 +125,17 @@ if __name__ == "__main__":
 
     if sys.argv[1:] == ["download"]:
         get_embedding_store()
-        sys.exit(f"{MODEL_NAME} is ready")
+        print(f"{MODEL_NAME} is ready")
+        sys.exit(0)
     if sys.argv[1:] != ["reindex"]:
         sys.exit("usage: python -m server.embed download|reindex")
-    from server.main import _connect
+    from server.main import _connect, _repair_index
 
     conn = _connect()
-    rows = conn.execute(
-        "SELECT recording_id, transcript, summary, timestamp FROM recordings "
-        "WHERE transcript IS NOT NULL AND transcript != '' AND timestamp IS NOT NULL"
-    ).fetchall()
+    conn.execute("UPDATE recordings SET index_pending = 1")
+    conn.execute("UPDATE deleted_recordings SET index_pending = 1")
+    conn.commit()
     conn.close()
     store = get_embedding_store()
-    for recording_id, transcript, summary, timestamp in rows:
-        store.add_transcript(recording_id, transcript, summary or "", timestamp)
-    print(f"reindexed {len(rows)} recordings, {store.collection.count()} chunks")
+    _repair_index(store)
+    print(f"reindexed journal: {store.collection.count()} chunks")

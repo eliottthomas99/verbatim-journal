@@ -15,6 +15,7 @@ import time
 from datetime import datetime, timedelta
 
 import requests
+from e2e_checks import check_answer
 
 SERVER = sys.argv[2] if len(sys.argv) > 2 else "http://127.0.0.1:8000"
 HEADERS = {"Authorization": f"Bearer {os.environ['VERBATIM_API_TOKEN']}"}
@@ -67,6 +68,17 @@ for name, ts, text in RECORDINGS:
     print(f"summary {name}: {time.time() - t:.1f}s", flush=True)
 
 for q, words, expected, kind in QUESTIONS:
+    if kind == "date":
+        today = now.date()
+        if "hier" in q.lower() or "yesterday" in q.lower():
+            first = last = today - timedelta(days=1)
+        elif "trois jours" in q:
+            first = last = today - timedelta(days=3)
+        else:
+            first = today - timedelta(days=today.weekday() + 7)
+            last = first + timedelta(days=6)
+        expected = [name for name, ts, _ in RECORDINGS
+                    if first <= datetime.fromtimestamp(ts / 1000).date() <= last]
     t = time.time()
     r = requests.post(f"{SERVER}/query", headers=HEADERS, json={"question": q}, timeout=900)
     r.raise_for_status()
@@ -75,13 +87,13 @@ for q, words, expected, kind in QUESTIONS:
     answer = body["answer"]
     out["questions"].append({
         "q": q, "kind": kind, "seconds": round(time.time() - t, 1), "answer": answer, "sources": sources,
-        "word_hit": (not words) or any(w.lower() in answer.lower() for w in words),
-        "retrieved_expected": all(e in sources for e in expected),
+        **check_answer(answer, sources, words, expected, kind),
     })
     print(f"{kind}: {time.time() - t:.1f}s", flush=True)
 
-found = sum(q["retrieved_expected"] for q in out["questions"])
-right = sum(q["word_hit"] for q in out["questions"])
-print(f"right recording: {found}/{len(QUESTIONS)}; expected words in the answer: {right}/{len(QUESTIONS)}")
+retrieval = [q["retrieval_check"] for q in out["questions"] if q["retrieval_check"] is not None]
+right = sum(q["answer_smoke_check"] for q in out["questions"])
+print(f"retrieval smoke checks: {sum(retrieval)}/{len(retrieval)}; answer smoke checks: {right}/{len(QUESTIONS)}")
+print("Heuristics only: read every answer for correctness, abstention and language. Extra undated sources are allowed.")
 with open(sys.argv[1], "w", encoding="utf-8") as f:
     json.dump(out, f, ensure_ascii=False, indent=1)

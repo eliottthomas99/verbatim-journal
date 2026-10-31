@@ -29,14 +29,13 @@ def summarize_text(text: str) -> dict:
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"Transcript:\n\n{text[:config.CONTEXT_CHARS]}"},
     ])
-    try:
-        parsed = parse_json_object(content)
-        items = parsed.get("action_items") or []
-        return {
-            "summary": str(parsed.get("summary", "")).strip(),
-            "action_items": [str(item) for item in items if str(item).strip()],
-        }
-    except (ValueError, AttributeError) as e:
-        # The model didn't return clean JSON: keep its text as the summary.
-        print(f"Summary was not JSON ({e}); keeping raw text", flush=True)
-        return {"summary": content, "action_items": []}
+    parsed = parse_json_object(content)
+    if not isinstance(parsed, dict):
+        raise ValueError("The model summary must be an object")
+    summary = parsed.get("summary")
+    items = parsed.get("action_items")
+    if not isinstance(summary, str) or not summary.strip():
+        raise ValueError("The model returned no summary")
+    if not isinstance(items, list) or not all(isinstance(item, str) for item in items):
+        raise ValueError("The model action_items must be a list of strings")
+    return {"summary": summary.strip(), "action_items": [item.strip() for item in items if item.strip()]}
