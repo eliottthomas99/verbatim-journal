@@ -16,6 +16,7 @@ import shutil
 import tarfile
 import tempfile
 import urllib.request
+import runpy
 
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / ".local-models" / "tts"
@@ -87,6 +88,7 @@ def main() -> None:
     )
     size = sum(f.stat().st_size for f in assets.rglob("*") if f.is_file())
     print(f"TTS assets ready in {assets} ({size / 1e6:.1f} MB)")
+    runpy.run_path(str(ROOT / "tools/prepare_licenses.py"))["prepare"]()
 
 
 if __name__ == "__main__":

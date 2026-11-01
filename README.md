@@ -101,17 +101,16 @@ To smoke-test a server and model with fictional recordings, start it with `VERBA
 
 ## 3. Build the app
 
-The build requires JDK 25, Android SDK 37, NDK 28.2.13676358 and CMake 3.22.1. Open the project in a current Android Studio and let it sync/install the requested components and create `local.properties`. To build from a terminal instead, set `ANDROID_HOME` to your Android SDK folder and `JAVA_HOME` to Android Studio's bundled JDK 25 (its `jbr` folder). In PowerShell use `$env:ANDROID_HOME = "<SDK folder>"` and `$env:JAVA_HOME = "<JDK folder>"`; replace the placeholders with your installation paths.
+The build requires JDK 25 and Android SDK 37. The app uses a prebuilt arm64 sherpa runtime; it no longer compiles a Needle/CMake bridge. Open the project in a current Android Studio and let it sync/install the requested components and create `local.properties`. To build from a terminal instead, set `ANDROID_HOME` to your Android SDK folder and `JAVA_HOME` to Android Studio's bundled JDK 25 (its `jbr` folder). In PowerShell use `$env:ANDROID_HOME = "<SDK folder>"` and `$env:JAVA_HOME = "<JDK folder>"`; replace the placeholders with your installation paths.
 
-The speech and voice models aren't in git. Fetch them once, with checksums verified, then build with a phone plugged in with USB debugging on:
+The voice models aren't in git. Fetch them and their licence texts once, with checksums verified, then build with a phone plugged in with USB debugging on:
 
 ```
-python -I tools/prepare_whistle.py
 python -I tools/prepare_tts.py
 .\gradlew.bat installDebug        # Linux and macOS: ./gradlew installDebug
 ```
 
-The APK is about 90 MB.
+Download Parakeet (670 MB) from Settings before transcribing or asking by voice. No speech-recognition model is bundled. Recording without the model still saves the audio; after downloading, open the recording and choose **Transcribe again**. Existing transcripts and typed questions do not require the model. A model failure never switches to a cloud recognizer or another engine.
 
 For a PC-only check, use `.\gradlew.bat assembleDebug testDebugUnitTest` instead: it builds without installing or recording anything. Server tests need `python -m pip install -r server/requirements-dev.txt`, then `python -m pytest server/tests`. These server tests use fake model/index components and invented data, not downloaded model weights.
 
@@ -121,14 +120,14 @@ The version is `1.0.0` (`versionCode = 1`). A release APK uses code/resource shr
 
 Release signing is optional at build time. To sign, provide `VERBATIM_KEYSTORE` (an absolute path outside the repository), `VERBATIM_KEY_ALIAS`, `VERBATIM_STORE_PASSWORD` and `VERBATIM_KEY_PASSWORD` in the build process's environment, then run `.\gradlew.bat assembleRelease assembleReleaseCheck testDebugUnitTest --no-configuration-cache` (use `./gradlew` on Linux/macOS). Without a keystore, the release APK is unsigned and not a distributable release. Do not put signing credentials in Git, command-line arguments or a build scan; keep a recoverable backup of the key and password. Inspect signatures with the Android SDK's `apksigner verify --verbose --print-certs`.
 
-**APK publication is still pending device validation and a native-source licensing check.** The app links the prebuilt Needle engine and GPL-3.0 espeak-ng. An Apache-2.0 notice on a binary alone does not establish that the complete corresponding source needed for a combined GPL APK is available. The pinned Needle artifacts and currently linked upstream repository provide binaries/Python wrappers; the native engine's matching C/C++ source has not been located. Resolve that before calling an APK ready for public distribution. Source availability and a full native privacy audit are separate questions.
+**APK publication is still pending final device checks and corresponding-source review.** Whistle and its unavailable-source Needle runtime have been removed. Piper still includes GPL-covered espeak-ng; full licence texts/notices are bundled, but the exact prebuilt native provenance and source dependency closure must be verified before distribution. See [the native-source checklist](tools/NATIVE_SOURCES.md). Source availability and a native privacy audit are separate questions. `python -I tools/check_release_apk.py <apk>` checks the final packaging for removed components and required licence texts; it is not a legal-compliance certificate.
 
 ## 4. Connect them
 
 1. Install Tailscale on the phone, signed in to the same account.
 2. Open Verbatim, tap **Connect your server**.
 3. Enter `http://<your Tailscale IP>:8000` and the token, then tap **Save & test**. It should say **Connected**.
-4. Optional: in Settings, download the accurate speech model, Parakeet (670 MB). You can also add the **Record** tile to Quick Settings.
+4. In Settings, download Parakeet (670 MB, use Wi-Fi) to enable transcription and spoken questions. After that it works offline. You can also add the **Record** tile to Quick Settings.
 
 ## What has been tested
 
@@ -137,10 +136,12 @@ Release signing is optional at build time. To sign, provide `VERBATIM_KEYSTORE` 
 | Server and model | Windows 11, a 4 GB laptop GPU, Gemma 4 E4B Q4_K_M (3.5 GB of GPU memory, a few seconds per summary) |
 | Earlier model smoke check | Invented French/English entries were manually reviewed; the earlier script reported 14/14 retrieval checks. That score allowed extra sources and automatically passed empty expectations, so it is not proof of 14 correct answers |
 | Phone to server | An arm64 Android phone over Tailscale: first-run setup, wrong and right token, offline note syncing on connect, summaries, questions in the app, deleting from both sides |
-| Fresh clone audit | Fresh Python 3.13 environment, dependency install, checksum-verified Whistle/Piper/runtime downloads, Android debug build and JVM tests; existing Android SDK/JDK and Gradle dependency caches used |
+| Earlier fresh clone audit | Fresh Python 3.13 environment, dependency install, checksum-verified speech/voice/runtime downloads, Android debug build and JVM tests; existing Android SDK/JDK and Gradle dependency caches used |
 | Automated regressions | Server tests with fake model/index components cover failed sync/deletion races, durable index repair, date handling, context limits and invalid model output; JVM tests cover recording IDs and address/token pairing |
 
 The Gemma download and a complete fresh setup through a real-model answer have not been repeated end to end. The strengthened smoke script was re-run with existing Gemma weights and a new empty dataset: retrieval checks passed, but manual review still found language/deadline mistakes (see Known limits). In the separate signed release-test package, an eight-second English recording passed Parakeet transcription, sync, summary and action-item checks; recording playback, a spoken question and bundled English read-aloud were also confirmed on the phone. Deletion after a failed first sync survived an offline delete and app restart, removed the server text/search entries on reconnect, and rejected a late upload. Existing apps and recordings were not replaced. Multi-minute recordings were tested before the package rename, not repeated in this signed build; hour-long sessions and signed-build French voice checks remain unverified. Other model servers and operating systems remain unverified.
+
+Those original voice checks preceded the removal of Whistle. The Parakeet-only build passes signed builds and automated tests. Its isolated device upgrade preserved the saved notes/model, displayed the full GPL text, and re-transcribed the saved eight-second clip with the same correct timed transcript. Reopening the app synced it after the backend returned; a typed question produced the correct answer, and bundled English read-aloud was invoked without a reported error. No new microphone recording/spoken-question capture or fresh-install missing-model device test was performed in that round.
 
 ## Known limits
 
@@ -148,7 +149,7 @@ The Gemma download and a complete fresh setup through a real-model answer have n
 - **Summaries and answers depend on your model.** Small models can leave things out of a long answer, or occasionally answer in the wrong language.
 - **A game or other GPU-heavy program slows answers a lot** on a small GPU: from about 10 seconds to well over a minute in testing.
 - **Sources may include unrelated recordings** when a question has no date, because search always returns the closest matches.
-- **The light speech model (Whistle) is mediocre on real French speech.** Parakeet is much better. Recordings up to 5 minutes have been measured with it; longer ones are untested. A sentence falling on one of its 30-second cuts can lose accuracy.
+- **Parakeet needs a one-time 670 MB download and substantial memory.** Recordings up to 5 minutes have been measured with it; longer ones are untested. A sentence falling on one of its 30-second cuts can lose accuracy. Missing/failed models leave audio on the phone for an explicit retry; there is no lightweight fallback.
 - **Editing a transcript drops its timed lines**, so tap-to-play no longer works on that recording.
 - **Date questions** understand common French and English phrasings; unsupported expressions (including date ranges such as "between March 1 and March 31") search all dates, never just the first date in the range. A recognized period with no entries returns no recordings, without searching other dates. The server's clock and time zone are used.
 - **Long transcripts** are cut to `VERBATIM_CONTEXT_CHARS` characters for the summary. They're still stored and searchable in full.
@@ -156,7 +157,7 @@ The Gemma download and a complete fresh setup through a real-model answer have n
 - **Deletion keeps an opaque ID marker on the server**, not the transcript or summary, to prevent a late upload or retry from recreating deleted text. Index failures are retried at startup, before questions and during later syncs/deletions; questions fail rather than use an index awaiting repair. Deletion does not erase your backups.
 - **Reading aloud uses bundled voices only.** If they fail, the app shows an error instead of passing private answer text to a system speech engine that might use the cloud.
 - **Real-model smoke checks are not a quality guarantee.** A later run passed all retrieval/keyword checks but answered one French period question in English and included unrelated tasks in a deadline answer on manual review.
-- **The privacy claim has a boundary.** Tests measured no outgoing traffic from the Whistle engine during transcription, but its closed native library hasn't had a full privacy audit. The app downloads Parakeet only if you ask.
+- **The privacy claim has a boundary.** Audio is processed locally and only transcript text is sent by the app. A complete native privacy audit has not been performed. Parakeet is downloaded only when you request it in Settings; the app also contacts your configured backend for text sync and questions.
 
 ## Recording law
 

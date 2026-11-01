@@ -88,6 +88,9 @@ class SyncRepository(
                         dao.replaceTranscript(recordingId, transcript.text, transcript.segments)
                         submitNow(recordingId)
                     }
+                } else {
+                    dao.markTranscriptionError(recordingId,
+                        result.exceptionOrNull()?.message ?: "No speech detected. Existing text was kept.")
                 }
             } finally {
                 _retranscribing.value -= recordingId

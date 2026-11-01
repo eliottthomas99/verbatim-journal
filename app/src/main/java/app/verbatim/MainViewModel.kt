@@ -121,7 +121,7 @@ class MainViewModel(private val dao: RecordingDao) : ViewModel() {
         if (!isAsking) exchanges.clear()
     }
 
-    // --- Spoken questions (recognized on the phone by Whistle) ---
+    // --- Spoken questions (recognized on the phone by Parakeet) ---
 
     enum class VoiceState { Idle, Listening, Transcribing }
 

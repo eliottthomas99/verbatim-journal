@@ -3,7 +3,7 @@ package app.verbatim.asr
 /**
  * Stateful sample-rate converter for mono float PCM.
  *
- * The Whistle engine requires 16 kHz mono float PCM in [-1, 1], but the codec
+ * The speech engine requires 16 kHz mono float PCM in [-1, 1], but the codec
  * hands us decoded audio at its original rate (44.1/48 kHz) in bursts of
  * ~1024-sample buffers. This class converts each burst as it arrives and
  * carries the converter state across burst boundaries, so callers never have
@@ -17,7 +17,7 @@ package app.verbatim.asr
  *    of clamping.
  *
  * Resampling is linear interpolation: `out = s0 + f * (s1 - s0)`. No
- * pre-emphasis, mel filtering or windowing — the Whistle engine owns its own
+ * pre-emphasis, mel filtering or windowing — the speech engine owns its own
  * frontend.
  *
  * Pure Kotlin, no Android imports, so it is unit-testable on the JVM.
@@ -99,7 +99,7 @@ class StreamingResampler(
     }
 
     companion object {
-        /** Whistle requires 16 kHz input. */
+        /** Parakeet requires 16 kHz input. */
         const val TARGET_SAMPLE_RATE = 16_000
 
         /**

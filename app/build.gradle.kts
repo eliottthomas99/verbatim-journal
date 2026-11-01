@@ -10,7 +10,6 @@ plugins {
 val releaseKeystore = providers.environmentVariable("VERBATIM_KEYSTORE").orNull
 
 android {
-    ndkVersion = "28.2.13676358"
     namespace = "app.verbatim"
     compileSdk {
         version = release(37)
@@ -71,64 +70,18 @@ android {
         jniLibs.excludes += listOf("lib/armeabi-v7a/**", "lib/x86/**", "lib/x86_64/**")
     }
 
-    // Bundle Whistle model + licenses into APK assets (not downloaded on phone)
+    // Bundle Piper voices; Parakeet is downloaded explicitly on the phone.
     sourceSets {
         getByName("main").assets.srcDirs(
-            rootProject.layout.projectDirectory.dir(".local-models/whistle/assets"),
             // Piper voices + espeak-ng data for reading answers aloud (tools/prepare_tts.py)
             rootProject.layout.projectDirectory.dir(".local-models/tts/assets")
         )
         getByName("androidTest").assets.srcDirs(
-            layout.buildDirectory.dir("generated/whistle-test-assets").get().asFile
+            layout.buildDirectory.dir("generated/asr-test-assets").get().asFile
         )
     }
 
-    // CMake build targeting the Needle (Whistle) JNI library.
-    // Only arm64-v8a (modern Android devices).
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
-    androidComponents {
-        onVariants { variant ->
-            variant.externalNativeBuild?.abiFilters?.set(setOf("arm64-v8a"))
-        }
-    }
 }
-
-// Do not silently build an APK without its offline model.
-val verifyWhistleAssets = tasks.register("verifyWhistleAssets") {
-    val assets = rootProject.layout.projectDirectory.dir(".local-models/whistle")
-    inputs.dir(assets)
-    doLast {
-        val hashes = mapOf(
-            "assets/asr/whistle.cact" to "b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb",
-            "native/arm64-v8a/libneedle.a" to "7aa6de6132a22bf45f5e903425feb66f159ad46f47fa558921bc4fd02c3a2fa0",
-            "native/needle.h" to "a27dac4b3239eead91d124b7f7dbce5495c13019903fd817b68c16d39b055a99",
-            "assets/asr/WHISTLE-LICENSE.txt" to "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
-            "assets/asr/NEEDLE-LICENSE.txt" to "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
-        )
-        hashes.forEach { (path, expected) ->
-            val file = assets.file(path).asFile
-            check(file.isFile) { "Missing $path. Run python -I tools/prepare_whistle.py" }
-            val digest = MessageDigest.getInstance("SHA-256")
-            file.inputStream().use { input ->
-                val buffer = ByteArray(65536)
-                while (true) {
-                    val count = input.read(buffer)
-                    if (count < 0) break
-                    digest.update(buffer, 0, count)
-                }
-            }
-            check(digest.digest().joinToString("") { "%02x".format(it) } == expected) {
-                "Invalid $path. Run python -I tools/prepare_whistle.py"
-            }
-        }
-    }
-}
-tasks.named("preBuild") { dependsOn(verifyWhistleAssets) }
 
 // Same for the voices that read answers aloud (checksums are verified by the script).
 val verifyTtsAssets = tasks.register("verifyTtsAssets") {
@@ -136,6 +89,20 @@ val verifyTtsAssets = tasks.register("verifyTtsAssets") {
     doLast {
         listOf("sherpa-onnx.aar", "assets/tts/fr/model.onnx", "assets/tts/en/model.onnx", "assets/tts/espeak-ng-data/phondata")
             .forEach { check(tts.file(it).asFile.isFile) { "Missing .local-models/tts/$it. Run python -I tools/prepare_tts.py" } }
+        val manifest = groovy.json.JsonSlurper().parse(rootProject.file("tools/native_licenses.json")) as List<*>
+        manifest.forEach { entry ->
+            val spec = entry as Map<*, *>
+            val file = tts.file("assets/licenses/${spec["name"]}").asFile
+            check(file.isFile) { "Missing licence ${spec["name"]}. Run python -I tools/prepare_licenses.py" }
+            val digest = MessageDigest.getInstance("SHA-256").digest(file.readBytes())
+            check(digest.joinToString("") { "%02x".format(it) } == spec["sha256"]) { "Invalid licence ${spec["name"]}" }
+        }
+        check(tts.file("assets/licenses/GPL-3.0.txt").asFile.readBytes().contentEquals(rootProject.file("LICENSE").readBytes())) {
+            "GPL text is missing or outdated. Run python -I tools/prepare_licenses.py"
+        }
+        check(tts.file("assets/licenses/NOTICES.txt").asFile.readBytes().contentEquals(rootProject.file("THIRD_PARTY_NOTICES.md").readBytes())) {
+            "Notices are missing or outdated. Run python -I tools/prepare_licenses.py"
+        }
     }
 }
 tasks.named("preBuild") { dependsOn(verifyTtsAssets) }

@@ -58,6 +58,10 @@ interface RecordingDao {
               summary = '', actionItems = '', isSynced = 0, syncError = '' WHERE id = :id""")
     suspend fun replaceTranscript(id: Long, transcript: String, segments: List<TranscriptSegment>)
 
+    /** A failed retry must remain visible without erasing any existing text. */
+    @Query("UPDATE recordings SET transcriptionError = :error WHERE id = :id")
+    suspend fun markTranscriptionError(id: Long, error: String)
+
     /** Store the server-generated summary and action items. Targeted UPDATE so the other columns survive. */
     @Query("UPDATE recordings SET summary = :summary, actionItems = :actionItems WHERE id = :id")
     suspend fun markSummary(id: Long, summary: String, actionItems: String)

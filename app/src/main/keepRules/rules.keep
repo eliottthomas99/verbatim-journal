@@ -1,5 +1,4 @@
 # JNI looks up these class/method names; renaming/removing them breaks speech.
--keep class app.verbatim.asr.WhistleNative { *; }
 -keep class com.k2fsa.sherpa.onnx.** { *; }
 -keep class app.verbatim.voice.PiperVoices$ChunkSink { *; }
 

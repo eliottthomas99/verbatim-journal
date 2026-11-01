@@ -13,15 +13,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
 
 /**
  * On-device tests for [AsrTranscriber]: real M4A files decoded to 16 kHz mono
- * PCM and transcribed by the bundled Whistle model.
+ * PCM and transcribed by the downloaded Parakeet model. No download is started
+ * by this test: inference tests skip unless the target app already has it.
  *
  * The M4A fixtures are generated on the PC by
- * tools/generate_whistle_m4a_test_audio.ps1 (synthetic TTS speech only).
+ * tools/generate_asr_test_audio.ps1 (synthetic TTS speech only).
  */
 class AsrTranscriberTest {
 
@@ -31,15 +33,14 @@ class AsrTranscriberTest {
 
     @Before
     fun loadModel() {
-        // The model is loaded once per process; the app loads it the same way.
-        WhistleNative.loadModelFromAssets(context).getOrThrow()
+        assumeTrue("Download Parakeet in the target app before inference tests", ParakeetModel.isReady(context))
     }
 
     @Test
     fun englishM4aIsTranscribedWithRealTimings() = runBlocking {
         val result = transcriber.transcribe(assetFile("english.m4a")).getOrThrow()
 
-        assertEquals("en", result.language)
+        assertEquals("", result.language) // Parakeet does not expose a language code.
         assertTrue("unexpected text: '${result.text}'", result.text.contains("speech", ignoreCase = true))
         assertTrue("no segments", result.segments.isNotEmpty())
 
@@ -60,7 +61,7 @@ class AsrTranscriberTest {
     fun frenchM4aKeepsItsAccents() = runBlocking {
         val result = transcriber.transcribe(assetFile("french.m4a")).getOrThrow()
 
-        assertEquals("fr", result.language)
+        assertEquals("", result.language)
         assertTrue("unexpected text: '${result.text}'", result.text.contains("téléphone", ignoreCase = true))
         assertTrue("no segments", result.segments.isNotEmpty())
         assertTrue(result.segments.all { it.startMs >= 0 && it.endMs > it.startMs })

@@ -3,11 +3,11 @@
 # no personal audio. The WAVs are converted to 44.1 kHz stereo AAC (the format
 # MediaRecorder produces), so the decoder path is exercised for real.
 #
-# Usage: powershell -ExecutionPolicy Bypass -File tools\generate_whistle_m4a_test_audio.ps1
+# Usage: powershell -ExecutionPolicy Bypass -File tools\generate_asr_test_audio.ps1
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Speech
 
-$directory = Join-Path $PSScriptRoot '..\app\build\generated\whistle-test-assets'
+$directory = Join-Path $PSScriptRoot '..\app\build\generated\asr-test-assets'
 New-Item -ItemType Directory -Force -Path $directory | Out-Null
 
 # --- locate ffmpeg / ffprobe: PATH, then the WinGet Links folder, then the packages folder ---

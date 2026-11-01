@@ -12,7 +12,7 @@ import java.nio.ByteOrder
 
 /**
  * Decodes an AAC/M4A recording into 16 kHz mono float PCM in [-1, 1], the
- * exact input format the Whistle engine expects.
+ * exact input format the Parakeet engine expects.
  *
  * Per decoded output buffer the pipeline is:
  *   copy the valid bytes (respecting `BufferInfo.offset` and `BufferInfo.size`)

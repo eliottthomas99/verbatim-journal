@@ -33,7 +33,7 @@ data class TranscriptionResult(
 )
 
 /**
- * Transcribes a recording on the phone with the engine chosen in Settings.
+ * Transcribes a recording on the phone with Parakeet.
  *
  * The audio never leaves the device: the M4A is decoded to 16 kHz mono float
  * PCM locally and passed to the on-device engine through [SpeechEngine].
@@ -58,6 +58,7 @@ class AsrTranscriber(private val context: Context) {
             val job = coroutineContext[Job]
             val cancelCheck: () -> Unit = { job?.ensureActive() }
             try {
+                SpeechEngine.requireModel(context)
                 val pcm = decoder.decode(audioFile, cancelCheck)
                 val engine = SpeechEngine.transcribe(context, pcm, cancelCheck).getOrThrow()
                 Log.d(
@@ -75,7 +76,7 @@ class AsrTranscriber(private val context: Context) {
             }
         }
 
-    private fun toResult(engine: WhistleResult): TranscriptionResult =
+    private fun toResult(engine: SpeechResult): TranscriptionResult =
         TranscriptionResult(
             text = engine.text,
             segments = buildSegments(engine.words),

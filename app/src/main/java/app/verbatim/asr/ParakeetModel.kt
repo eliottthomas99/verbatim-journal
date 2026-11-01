@@ -3,7 +3,6 @@ package app.verbatim.asr
 import android.content.Context
 import android.util.Log
 import app.verbatim.JournalApplication
-import app.verbatim.data.AppPrefs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.ensureActive
@@ -54,7 +53,8 @@ object ParakeetModel {
     private fun marker(context: Context) = File(directory(context), "verified")
 
     /** Verified once after the download: hashing 670 MB at every start would be slow. */
-    fun isReady(context: Context): Boolean = marker(context).exists()
+    fun isReady(context: Context): Boolean = marker(context).isFile &&
+        FILES.all { File(directory(context), it.name).length() == it.size }
 
     /** Sets the state from what is on disk; call before showing it. */
     fun refresh(context: Context) {
@@ -69,7 +69,6 @@ object ParakeetModel {
             try {
                 downloadAll(app)
                 marker(app).createNewFile()
-                AppPrefs.setSpeechEngine(app, AppPrefs.ENGINE_PARAKEET)
                 _state.value = State.Ready
             } catch (e: CancellationException) {
                 _state.value = State.Absent
@@ -88,7 +87,6 @@ object ParakeetModel {
 
     fun delete(context: Context) {
         job?.cancel()
-        AppPrefs.setSpeechEngine(context, AppPrefs.ENGINE_WHISTLE)
         ParakeetEngine.release()
         directory(context).deleteRecursively()
         _state.value = State.Absent

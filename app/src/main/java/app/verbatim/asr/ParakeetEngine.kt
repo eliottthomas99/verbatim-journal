@@ -33,7 +33,7 @@ object ParakeetEngine {
     }
 
     /** Blocking — call it off the main thread. [checkCancelled] runs between chunks. */
-    fun transcribe(context: Context, pcm: FloatArray, checkCancelled: () -> Unit = {}): WhistleResult =
+    fun transcribe(context: Context, pcm: FloatArray, checkCancelled: () -> Unit = {}): SpeechResult =
         synchronized(lock) {
             releaseJob?.cancel()
             try {
@@ -58,7 +58,7 @@ object ParakeetEngine {
                         stream.release()
                     }
                 }
-                WhistleResult(text = texts.joinToString(" "), words = words)
+                SpeechResult(text = texts.joinToString(" "), words = words)
             } finally {
                 scheduleRelease()
             }

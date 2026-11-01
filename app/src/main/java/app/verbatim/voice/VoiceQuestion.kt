@@ -6,6 +6,7 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import app.verbatim.JournalApplication
 import app.verbatim.asr.SpeechEngine
+import app.verbatim.asr.ParakeetModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
@@ -28,6 +29,8 @@ class VoiceQuestion {
     @SuppressLint("MissingPermission") // RECORD_AUDIO is checked by the caller
     suspend fun listenAndTranscribe(maxMs: Long = 30_000, onListeningDone: () -> Unit = {}): String {
         val app = JournalApplication.instance
+        // Do not open the microphone when speech recognition is unavailable.
+        check(ParakeetModel.isReady(app)) { "Download Parakeet in Settings before asking by voice. You can still type a question." }
         // Load the engine while the user speaks, so the answer doesn't wait for it.
         app.applicationScope.launch { SpeechEngine.preload(app) }
         val pcm = record(maxMs)

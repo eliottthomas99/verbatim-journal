@@ -5,7 +5,7 @@ Verbatim has two parts: an Android app that owns the audio, and a small Python s
 ## On the phone (Kotlin, Jetpack Compose)
 
 1. **Record.** A foreground service records AAC audio to a private `.m4a` file, started from the app or a Quick Settings tile.
-2. **Transcribe.** The file is decoded and resampled to 16 kHz mono, then transcribed on the phone by Whistle (17 MB, included) or Parakeet v3 (670 MB, optional). Parakeet works through long recordings in pieces of about 30 seconds, cut at the quietest moment, to limit memory use.
+2. **Transcribe.** The file is decoded and resampled to 16 kHz mono, then transcribed on the phone by Parakeet v3 (670 MB, downloaded explicitly in Settings). It works through long recordings in pieces of about 30 seconds, cut at the quietest moment, to limit memory use. Missing/failed models keep the audio and show an error; after setup, the user explicitly chooses **Transcribe again**. There is no Whistle/Needle runtime or cloud fallback.
 3. **Store.** Text, timed segments and sync state go in a local Room (SQLite) database, which keeps working with no network.
 4. **Sync.** Only the text is sent, when a recording finishes, when the app starts and when it comes to the front. Failed syncs stay pending and retry at those moments. A deletion the server hasn't acknowledged is remembered and retried too.
 5. **Ask and listen.** Spoken questions are recognized on the phone. Bundled Piper voices read answers aloud; if they fail, the app reports an error, never falling back to a potentially cloud-backed system engine.

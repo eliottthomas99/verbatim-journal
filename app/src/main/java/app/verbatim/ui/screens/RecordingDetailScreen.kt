@@ -95,7 +95,7 @@ fun RecordingDetailScreen(
             AlertDialog(
                 onDismissRequest = { confirmRetranscribe = false },
                 title = { Text("Transcribe again?") },
-                text = { Text("The current text, including any corrections you made by hand, will be replaced using the speech model selected in Settings. The summary is then redone.") },
+                text = { Text("The current text, including any corrections you made by hand, will be replaced using Parakeet. The summary is then redone. Download the model in Settings first.") },
                 confirmButton = {
                     TextButton(onClick = { confirmRetranscribe = false; onRetranscribe() }) { Text("Transcribe") }
                 },

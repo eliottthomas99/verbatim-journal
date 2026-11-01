@@ -21,47 +21,24 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
-/** Light bundled model or accurate downloaded one; both run on this phone. */
+/** The speech model is downloaded explicitly and always runs on this phone. */
 @Composable
 private fun SpeechModelSection() {
     val context = LocalContext.current
     val model by ParakeetModel.state.collectAsState()
-    var engine by remember { mutableStateOf(AppPrefs.speechEngine(context)) }
     LaunchedEffect(Unit) { ParakeetModel.refresh(context) }
-    // The app switches to Parakeet by itself when its download finishes.
-    LaunchedEffect(model) { engine = AppPrefs.speechEngine(context) }
     var confirmDelete by remember { mutableStateOf(false) }
-    val select = { choice: String ->
-        AppPrefs.setSpeechEngine(context, choice)
-        engine = choice
-    }
 
     Text("Speech recognition", style = MaterialTheme.typography.titleMedium)
     Text(
-        "Both models run on this phone: your audio never leaves it.",
+        "Parakeet runs on this phone: your audio never leaves it. Download it once before transcribing or asking by voice. Recordings made without it are kept for later transcription.",
         style = MaterialTheme.typography.bodySmall
     )
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(selected = engine == AppPrefs.ENGINE_WHISTLE, onClick = { select(AppPrefs.ENGINE_WHISTLE) })
-        Column {
-            Text("Light (Whistle)")
-            Text("17 MB, included. Fast, less accurate.", style = MaterialTheme.typography.bodySmall)
-        }
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        RadioButton(
-            selected = engine == AppPrefs.ENGINE_PARAKEET,
-            enabled = model == ParakeetModel.State.Ready,
-            onClick = { select(AppPrefs.ENGINE_PARAKEET) }
-        )
-        Column {
-            Text("Accurate (Parakeet v3)")
-            Text(
-                "670 MB download. Uses about 1 GB of memory while transcribing. NVIDIA Parakeet TDT 0.6B v3, CC BY 4.0.",
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
+    Text("Parakeet v3", style = MaterialTheme.typography.titleSmall)
+    Text(
+        "670 MB download. Uses about 1 GB of memory while transcribing. NVIDIA Parakeet TDT 0.6B v3, CC BY 4.0.",
+        style = MaterialTheme.typography.bodySmall
+    )
     when (val state = model) {
         ParakeetModel.State.Absent -> OutlinedButton(onClick = { ParakeetModel.download(context) }) {
             Text("Download Parakeet (670 MB, use Wi-Fi)")
@@ -88,9 +65,9 @@ private fun SpeechModelSection() {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("Delete Parakeet?") },
-            text = { Text("New recordings will use the light model. Existing transcripts are kept.") },
+            text = { Text("Transcription and spoken questions will be unavailable until you download it again. Existing recordings and transcripts are kept.") },
             confirmButton = {
-                TextButton(onClick = { confirmDelete = false; ParakeetModel.delete(context); engine = AppPrefs.ENGINE_WHISTLE }) {
+                TextButton(onClick = { confirmDelete = false; ParakeetModel.delete(context) }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -103,8 +80,7 @@ private fun SpeechModelSection() {
 private const val LICENCES = """Verbatim is free software under the GNU General Public License v3.0. Source code: ${BuildConfig.SOURCE_URL}
 
 Speech recognition
-Cactus Whistle model and Needle engine, Apache-2.0
-NVIDIA Parakeet TDT 0.6B v3 (optional download), CC BY 4.0. Converted by k2-fsa/sherpa-onnx.
+NVIDIA Parakeet TDT 0.6B v3 (required download for transcription), CC BY 4.0. Converted and quantized by k2-fsa/sherpa-onnx.
 
 Reading aloud
 sherpa-onnx 1.13.8, Apache-2.0
@@ -125,6 +101,11 @@ fun SettingsScreen(onShowConsent: () -> Unit, onBack: () -> Unit) {
     var serverToken by remember { mutableStateOf(AppPrefs.serverToken(context)) }
     var status by remember { mutableStateOf("") }
     var showLicences by remember { mutableStateOf(false) }
+    var licenceFile by remember { mutableStateOf<String?>(null) }
+    val licenceFiles = remember { context.assets.list("licenses").orEmpty().sorted() }
+    val licenceText = remember(licenceFile) {
+        licenceFile?.let { name -> context.assets.open("licenses/$name").bufferedReader().use { it.readText() } }
+    }
     val urlValid = serverUrl.trim().toHttpUrlOrNull() != null
 
     Scaffold(
@@ -213,13 +194,24 @@ fun SettingsScreen(onShowConsent: () -> Unit, onBack: () -> Unit) {
             onDismissRequest = { showLicences = false },
             title = { Text("Open-source licences") },
             text = {
-                Text(
-                    LICENCES,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.verticalScroll(rememberScrollState())
-                )
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(LICENCES, style = MaterialTheme.typography.bodySmall)
+                    Text("Verbatim comes without warranty. You may copy, modify and redistribute it under GPL-3.0.", style = MaterialTheme.typography.bodySmall)
+                    licenceFiles.forEach { name ->
+                        TextButton(onClick = { showLicences = false; licenceFile = name }) { Text(name) }
+                    }
+                }
             },
             confirmButton = { TextButton(onClick = { showLicences = false }) { Text("Close") } }
+        )
+    }
+    if (licenceFile != null) {
+        AlertDialog(
+            onDismissRequest = { licenceFile = null; showLicences = true },
+            title = { Text(licenceFile.orEmpty()) },
+            text = { Text(licenceText.orEmpty(), style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.verticalScroll(rememberScrollState())) },
+            confirmButton = { TextButton(onClick = { licenceFile = null; showLicences = true }) { Text("Back") } }
         )
     }
 }

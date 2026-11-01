@@ -15,7 +15,7 @@ data class Recording(
     val filename: String,
     val timestamp: Long,          // epoch millis when recording was created
     val durationMs: Long = 0,     // actual recording duration in ms
-    val transcript: String = "",  // filled on the phone by Whistle (local transcription)
+    val transcript: String = "",  // filled on the phone by Parakeet (local transcription)
     val summary: String = "",     // filled later by the server LLM
     val actionItems: String = "", // extracted by the server LLM
     val speakerLabels: List<String> = emptyList(), // e.g. ["Speaker A", "Speaker B"]
