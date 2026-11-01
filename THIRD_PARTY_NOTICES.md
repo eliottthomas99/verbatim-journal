@@ -2,6 +2,10 @@
 
 Verbatim is licensed under the GNU General Public License v3.0. No model weights are stored in this repository: `tools/prepare_whistle.py` and `tools/prepare_tts.py` fetch them when you build, and each user chooses and downloads their own language model.
 
+## Before distributing an APK
+
+Publishing this source and listing licences is not by itself a complete source offer for every linked native component. Verify the corresponding-source requirements of the combined GPL-3.0 APK, including the exact native Needle engine and the espeak-ng/sherpa-onnx build. The pinned Needle release provides a prebuilt static library; matching native engine source has not yet been located in the linked upstream repository (which contains Python wrappers). APK publication remains pending that check. This does not change the Apache-2.0 labels on the upstream artifacts or claim that a full legal audit has been completed.
+
 ## Included in the app when built
 
 | Component | Used for | Licence |

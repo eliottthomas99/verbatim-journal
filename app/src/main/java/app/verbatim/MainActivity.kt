@@ -1,11 +1,15 @@
 package app.verbatim
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.net.Uri
+import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
@@ -49,6 +53,25 @@ class MainActivity : ComponentActivity() {
      *  The tile service reads this via SharedPreferences. */
     var isPermissionsGranted = false
         private set
+
+    // A permanently denied permission returns immediately without showing Android's
+    // prompt. Always explain that result instead of leaving Record looking broken.
+    private val microphonePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            Toast.makeText(this, "Microphone enabled. Tap Record or the microphone to start.", Toast.LENGTH_LONG).show()
+        } else {
+            AlertDialog.Builder(this)
+                .setTitle("Microphone access required")
+                .setMessage("Recording and spoken questions need microphone access. Open app settings, choose Permissions, then allow Microphone. No recording has started.")
+                .setPositiveButton("Open settings") { _, _ ->
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+    }
 
     // ActivityResultContracts.RequestMultiplePermissions is the modern,
     // non-deprecated way to request dangerous permissions at runtime.
@@ -126,7 +149,7 @@ class MainActivity : ComponentActivity() {
                             voiceError = viewModel.voiceError.ifEmpty { speaker.problem },
                             onVoice = {
                                 speaker.stop()
-                                if (hasMicPermission()) viewModel.toggleVoice() else requestPermissionsIfNeeded()
+                                if (hasMicPermission()) viewModel.toggleVoice() else microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             },
                             // The microphone is busy while a recording runs.
                             voiceAvailable = !isRecording,
@@ -248,7 +271,7 @@ class MainActivity : ComponentActivity() {
 
     private fun toggleRecording() {
         if (!isRecording && !hasMicPermission()) {
-            requestPermissionsIfNeeded()
+            microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             return
         }
         recordButtonEnabled = false

@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Credentials come only from the build environment, never a tracked file.
+val releaseKeystore = providers.environmentVariable("VERBATIM_KEYSTORE").orNull
+
 android {
     ndkVersion = "28.2.13676358"
     namespace = "app.verbatim"
@@ -18,19 +21,42 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
+        manifestPlaceholders["appLabel"] = "@string/app_name"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Shown in the licences screen: the GPL requires pointing to the source.
         buildConfigField("String", "SOURCE_URL", "\"https://github.com/eliottthomas99/verbatim-journal\"")
     }
 
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = providers.environmentVariable("VERBATIM_STORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("VERBATIM_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("VERBATIM_KEY_PASSWORD").get()
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
+            // Development happens in a private repository. Never embed its Git
+            // revision or remote in an APK; SOURCE_URL points to public source.
+            vcsInfo { include = false }
             optimization {
                 enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
+                // Whole-program R8 keeps access changes consistent across Kotlin
+                // callers/superclasses; partial package shrinking crashed on device.
             }
+        }
+        create("releaseCheck") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".releasecheck"
+            versionNameSuffix = "-test"
+            manifestPlaceholders["appLabel"] = "Verbatim Release Test"
+            matchingFallbacks += listOf("release")
         }
     }
     compileOptions {

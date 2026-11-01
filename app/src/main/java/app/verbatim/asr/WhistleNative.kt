@@ -14,6 +14,7 @@ package app.verbatim.asr
 
 import android.content.Context
 import android.util.Log
+import android.system.Os
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -83,6 +84,12 @@ object WhistleNative {
     /** Loads the shared JNI library. */
     init {
         try {
+            // Set before loading native code, including any library constructors.
+            // Upstream documents these for newer engines. The pinned binary
+            // does not expose these strings: this is defense in depth, not a
+            // substitute for its existing no-traffic tests or a native audit.
+            Os.setenv("NEEDLE_TELEMETRY", "0", true)
+            Os.setenv("DO_NOT_TRACK", "1", true)
             System.loadLibrary("verbatim-jni")
             Log.d(TAG, "Native library 'verbatim-jni' loaded successfully.")
         } catch (e: UnsatisfiedLinkError) {

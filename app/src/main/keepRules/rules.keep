@@ -1,12 +1,17 @@
-# Add project specific R8 rules here.
-# AGP will combine all keep rule files in src/main/keepRules to pass to R8
-#
-# For more details, see
-#   https://d.android.com/r/tools/r8/keep-rules
+# JNI looks up these class/method names; renaming/removing them breaks speech.
+-keep class app.verbatim.asr.WhistleNative { *; }
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-keep class app.verbatim.voice.PiperVoices$ChunkSink { *; }
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Gson reads these field names and generic arguments through reflection.
+-keepattributes Signature,*Annotation*
+-keep class app.verbatim.network.** { *; }
+-keep class app.verbatim.asr.TranscriptSegment { *; }
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken { *; }
+
+# Retrofit 2.9 reflects the generic suspend-function continuation/response types.
+# Full-mode R8 drops their signatures unless those generic declarations survive.
+-keep interface kotlin.coroutines.Continuation { *; }
+-keep class retrofit2.Response { *; }
+-keep interface retrofit2.Call { *; }

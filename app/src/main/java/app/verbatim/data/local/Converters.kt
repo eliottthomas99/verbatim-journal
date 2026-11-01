@@ -2,7 +2,6 @@ package app.verbatim.data.local
 
 import androidx.room.TypeConverter
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import app.verbatim.asr.TranscriptSegment
 
 /**
@@ -19,8 +18,9 @@ class Converters {
 
     @TypeConverter
     fun toStringList(value: String): List<String> {
-        val type = object : TypeToken<List<String>>() {}.type
-        return gson.fromJson(value, type)
+        // Concrete arrays do not rely on anonymous TypeToken generic metadata,
+        // which can be stripped in an optimized release build. Same JSON format.
+        return gson.fromJson(value, Array<String>::class.java)?.toList().orEmpty()
     }
 
     /**
@@ -38,7 +38,6 @@ class Converters {
         // holds '' for them. Gson cannot parse "", so treat it (and a null
         // result) as "no segments" instead of crashing.
         if (value.isEmpty()) return emptyList()
-        val type = object : TypeToken<List<TranscriptSegment>>() {}.type
-        return gson.fromJson(value, type) ?: emptyList()
+        return gson.fromJson(value, Array<TranscriptSegment>::class.java)?.toList().orEmpty()
     }
 }

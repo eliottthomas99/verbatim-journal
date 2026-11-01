@@ -13,6 +13,8 @@ A private voice journal for Android that you run yourself. Record a conversation
 
 *All content in these screenshots is invented.*
 
+**[Watch the 24-second silent demo](docs/screenshots/demo.mp4)** — browse a recording's summary and timed transcript, see a spoken question answered, and open its source. All demo content is invented; system bars are cropped out.
+
 ## How it works
 
 ```
@@ -113,6 +115,14 @@ The APK is about 90 MB.
 
 For a PC-only check, use `.\gradlew.bat assembleDebug testDebugUnitTest` instead: it builds without installing or recording anything. Server tests need `python -m pip install -r server/requirements-dev.txt`, then `python -m pytest server/tests`. These server tests use fake model/index components and invented data, not downloaded model weights.
 
+### Signed release builds (maintainers)
+
+The version is `1.0.0` (`versionCode = 1`). A release APK uses code/resource shrinking, so debug tests alone are not enough. `assembleReleaseCheck` builds the same release configuration under `app.verbatim.releasecheck`, labelled **Verbatim Release Test**, for testing beside existing installations without deleting their data. Never uninstall a user's app just to resolve a signing-key mismatch.
+
+Release signing is optional at build time. To sign, provide `VERBATIM_KEYSTORE` (an absolute path outside the repository), `VERBATIM_KEY_ALIAS`, `VERBATIM_STORE_PASSWORD` and `VERBATIM_KEY_PASSWORD` in the build process's environment, then run `.\gradlew.bat assembleRelease assembleReleaseCheck testDebugUnitTest --no-configuration-cache` (use `./gradlew` on Linux/macOS). Without a keystore, the release APK is unsigned and not a distributable release. Do not put signing credentials in Git, command-line arguments or a build scan; keep a recoverable backup of the key and password. Inspect signatures with the Android SDK's `apksigner verify --verbose --print-certs`.
+
+**APK publication is still pending device validation and a native-source licensing check.** The app links the prebuilt Needle engine and GPL-3.0 espeak-ng. An Apache-2.0 notice on a binary alone does not establish that the complete corresponding source needed for a combined GPL APK is available. The pinned Needle artifacts and currently linked upstream repository provide binaries/Python wrappers; the native engine's matching C/C++ source has not been located. Resolve that before calling an APK ready for public distribution. Source availability and a full native privacy audit are separate questions.
+
 ## 4. Connect them
 
 1. Install Tailscale on the phone, signed in to the same account.
@@ -130,7 +140,7 @@ For a PC-only check, use `.\gradlew.bat assembleDebug testDebugUnitTest` instead
 | Fresh clone audit | Fresh Python 3.13 environment, dependency install, checksum-verified Whistle/Piper/runtime downloads, Android debug build and JVM tests; existing Android SDK/JDK and Gradle dependency caches used |
 | Automated regressions | Server tests with fake model/index components cover failed sync/deletion races, durable index repair, date handling, context limits and invalid model output; JVM tests cover recording IDs and address/token pairing |
 
-The Gemma download and a complete fresh setup through a real-model answer have not been repeated end to end. The strengthened smoke script and changed retrieval prompts have not yet been re-run with a real model. Parakeet, spoken questions, reading aloud and a real multi-minute speech recording were tested before the package rename, but have **not** been re-tested on the renamed app. This audit-fix build has not been installed on a phone; its deletion and speech-output changes still need device validation. Other model servers and operating systems remain unverified.
+The Gemma download and a complete fresh setup through a real-model answer have not been repeated end to end. The strengthened smoke script was re-run with existing Gemma weights and a new empty dataset: retrieval checks passed, but manual review still found language/deadline mistakes (see Known limits). In the separate signed release-test package, an eight-second English recording passed Parakeet transcription, sync, summary and action-item checks; recording playback, a spoken question and bundled English read-aloud were also confirmed on the phone. Deletion after a failed first sync survived an offline delete and app restart, removed the server text/search entries on reconnect, and rejected a late upload. Existing apps and recordings were not replaced. Multi-minute recordings were tested before the package rename, not repeated in this signed build; hour-long sessions and signed-build French voice checks remain unverified. Other model servers and operating systems remain unverified.
 
 ## Known limits
 
@@ -145,6 +155,7 @@ The Gemma download and a complete fresh setup through a real-model answer have n
 - **No export or import yet**, and transcripts are stored unencrypted on the phone's private storage and on your computer.
 - **Deletion keeps an opaque ID marker on the server**, not the transcript or summary, to prevent a late upload or retry from recreating deleted text. Index failures are retried at startup, before questions and during later syncs/deletions; questions fail rather than use an index awaiting repair. Deletion does not erase your backups.
 - **Reading aloud uses bundled voices only.** If they fail, the app shows an error instead of passing private answer text to a system speech engine that might use the cloud.
+- **Real-model smoke checks are not a quality guarantee.** A later run passed all retrieval/keyword checks but answered one French period question in English and included unrelated tasks in a deadline answer on manual review.
 - **The privacy claim has a boundary.** Tests measured no outgoing traffic from the Whistle engine during transcription, but its closed native library hasn't had a full privacy audit. The app downloads Parakeet only if you ask.
 
 ## Recording law
