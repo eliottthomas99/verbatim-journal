@@ -4,9 +4,9 @@ Verbatim is licensed under the GNU General Public License v3.0. No model weights
 
 ## Before distributing an APK
 
-Removing Needle resolves the identified unavailable-native-source component, not all release obligations. Piper includes GPL-3.0-or-later espeak-ng. APK publication remains pending the exact prebuilt native build provenance and complete corresponding-source review described in [the native-source checklist](tools/NATIVE_SOURCES.md), along with final device/release checks. A list of licences or source URLs is not by itself a complete source offer. No complete legal or native privacy audit is claimed.
+Piper includes GPL-3.0-or-later espeak-ng, so each APK release must be published next to its native source package. [The native source notes](tools/NATIVE_SOURCES.md) describe how the prebuilt library was built, what the package holds and what was not done. No complete legal or native privacy audit is claimed.
 
-`tools/prepare_licenses.py` bundles the full GPL text, this notice, pinned native licence texts and ONNX Runtime's third-party notices. They are accessible from Settings → Open-source licences. `tools/native_licenses.json` records the exact upstream URLs and SHA-256 hashes; `tools/native_sources.json` records verified baseline source archives. These notices preserve upstream attribution and do not relicense upstream components.
+`tools/prepare_licenses.py` bundles the full GPL text, this notice, pinned native licence texts and ONNX Runtime's third-party notices. They are accessible from Settings → Open-source licences. `tools/native_licenses.json` records the exact upstream URLs and SHA-256 hashes; `tools/native_sources.json` records the verified source archives. These notices preserve upstream attribution and do not relicense upstream components.
 
 ## Included in the app when built
 
@@ -16,7 +16,8 @@ Removing Needle resolves the identified unavailable-native-source component, not
 | [espeak-ng fork](https://github.com/csukuangfj/espeak-ng/tree/ed530aa113046142eb5115cf2fc9157854d0ffe1) | Text-to-phoneme conversion | GPL-3.0-or-later; additional Apache/BSD/Unicode notices for included portions |
 | [ONNX Runtime](https://github.com/microsoft/onnxruntime/tree/v1.28.2) | Neural inference, statically included in sherpa | MIT and upstream third-party notices |
 | [piper-phonemize](https://github.com/csukuangfj/piper-phonemize/tree/f3ff95afc03640bc1399e113e83361192a2fafb4) | Piper phonemization | MIT |
-| kaldi-native-fbank, kaldi-decoder, OpenFst, simple-sentencepiece | Speech features/decoding in sherpa | Apache-2.0; see bundled original notices |
+| kaldi-native-fbank, kaldi-decoder, kaldifst, OpenFst, simple-sentencepiece | Speech features/decoding in sherpa | Apache-2.0; see bundled original notices |
+| Eigen 3.4.0 | Linear algebra in kaldi-decoder | MPL-2.0 |
 | nlohmann/json | Native JSON support | MIT |
 | hclust-cpp, kissfft | Native clustering/FFT support | BSD-style; see bundled original texts |
 | Piper voice `fr_FR-siwis-medium` | French speech | SIWIS dataset, CC BY 4.0, University of Edinburgh |

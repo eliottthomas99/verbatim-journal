@@ -38,7 +38,7 @@ Your computer doesn't have to stay on. While it's off, the phone keeps recording
 - An **arm64 Android phone**, Android 8 or newer. The accurate speech model uses about 1 GB of memory more while transcribing.
 - A **computer for the server**: Python 3.12 or 3.13 and a local model server. The fresh dependency install and automated tests were checked with Python 3.13. A GPU with 4 GB of memory is enough for the tested model.
 - A **private network** between the two, such as [Tailscale](https://tailscale.com) (free for personal use).
-- To build the app: Android Studio, with the SDK and NDK it offers to install.
+- Only if you build the app yourself: Android Studio, with the SDK it offers to install.
 
 ## 1. Start a model
 
@@ -99,7 +99,17 @@ Your journal is stored in `data/`. Back up that folder and `.env`; both are igno
 
 To smoke-test a server and model with fictional recordings, start it with `VERBATIM_DATA_DIR` pointing to a new **empty** folder, then run `python tools/e2e_test.py results.json http://<address>:8000`, with `VERBATIM_API_TOKEN` set in that terminal. This adds invented entries and does not remove them. Scores are heuristics: read every answer for factual accuracy, language and correct refusal when information is absent.
 
-## 3. Build the app
+## 3. Install the app
+
+Your phone needs a 64-bit ARM processor (nearly all recent Android phones) and about 1 GB free for the app and its speech model.
+
+1. On the phone, open the [latest release](https://github.com/eliottthomas99/verbatim-journal/releases/latest) and download the `.apk` file.
+2. Open it. Android asks you to allow installing from your browser; allow it for this install.
+3. Open Verbatim, go to Settings and download Parakeet (670 MB) before transcribing or asking by voice.
+
+To update later, install a newer `.apk` the same way, over the existing app. Your recordings stay. Don't uninstall first: uninstalling deletes them.
+
+### Or build it yourself
 
 The build requires JDK 25 and Android SDK 37. The app uses a prebuilt arm64 sherpa runtime; it no longer compiles a Needle/CMake bridge. Open the project in a current Android Studio and let it sync/install the requested components and create `local.properties`. To build from a terminal instead, set `ANDROID_HOME` to your Android SDK folder and `JAVA_HOME` to Android Studio's bundled JDK 25 (its `jbr` folder). In PowerShell use `$env:ANDROID_HOME = "<SDK folder>"` and `$env:JAVA_HOME = "<JDK folder>"`; replace the placeholders with your installation paths.
 
@@ -120,7 +130,7 @@ The version is `1.0.0` (`versionCode = 1`). A release APK uses code/resource shr
 
 Release signing is optional at build time. To sign, provide `VERBATIM_KEYSTORE` (an absolute path outside the repository), `VERBATIM_KEY_ALIAS`, `VERBATIM_STORE_PASSWORD` and `VERBATIM_KEY_PASSWORD` in the build process's environment, then run `.\gradlew.bat assembleRelease assembleReleaseCheck testDebugUnitTest --no-configuration-cache` (use `./gradlew` on Linux/macOS). Without a keystore, the release APK is unsigned and not a distributable release. Do not put signing credentials in Git, command-line arguments or a build scan; keep a recoverable backup of the key and password. Inspect signatures with the Android SDK's `apksigner verify --verbose --print-certs`.
 
-**APK publication is still pending final device checks and corresponding-source review.** Whistle and its unavailable-source Needle runtime have been removed. Piper still includes GPL-covered espeak-ng; full licence texts/notices are bundled, but the exact prebuilt native provenance and source dependency closure must be verified before distribution. See [the native-source checklist](tools/NATIVE_SOURCES.md). Source availability and a native privacy audit are separate questions. `python -I tools/check_release_apk.py <apk>` checks the final packaging for removed components and required licence texts; it is not a legal-compliance certificate.
+Piper includes GPL-covered espeak-ng, so each APK is published with a native source package. [The native source notes](tools/NATIVE_SOURCES.md) trace how the prebuilt library was built and say what was not done. No native privacy audit has been done. `python -I tools/check_release_apk.py <apk>` checks the final packaging for removed components and required licence texts; it is not a legal-compliance certificate.
 
 ## 4. Connect them
 

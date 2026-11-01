@@ -1,59 +1,80 @@
-# Native source and binary-release checklist
+# Native source package
 
-Whistle and the closed-source Needle runtime are no longer built, loaded or
-bundled. Transcription uses Parakeet through sherpa-onnx; Piper also uses sherpa.
-This removes the identified unavailable-source component, not the obligations
-of the remaining GPL-covered espeak-ng combination.
+The APK contains prebuilt native code that includes GPL-3.0-or-later espeak-ng. This
+package holds the source for that native code, so it is published next to every APK
+under GPLv3 section 6. Verbatim's own source is the tagged commit of this repository.
 
-## What is pinned
+Whistle and the closed-source Needle runtime are no longer built, loaded or bundled.
 
-- sherpa-onnx 1.13.8: commit `11afbd009a7f8c08f4bcf2fc1b265d0df4670fbf`.
-  The AAR checksum is pinned in `prepare_tts.py`.
-- espeak-ng fork: `ed530aa113046142eb5115cf2fc9157854d0ffe1`, from that
-  sherpa revision's `cmake/espeak-ng-for-piper.cmake`.
-- ONNX Runtime 1.28.2: source commit
-  `33ca9628233dc8f002435e868d4c2e9f82766ca1`, the version selected by sherpa's
-  Android build script. Verifying the prebuilt Android runtime's exact build
-  provenance/patches remains part of the release review.
-- Other sherpa dependency archives and kissfft are pinned in
-  `native_sources.json`, using checksums from upstream CMake declarations.
-- Full native licence texts, including ONNX Runtime's third-party notices,
-  are pinned in `native_licenses.json` and bundled by `prepare_licenses.py`.
-  Voice model cards and the original upstream notices are kept with the voices.
+## How the shipped library was built
 
-## Source collection (maintainers only)
+`libsherpa-onnx-jni.so` comes from the official sherpa-onnx AAR, unmodified:
+
+| Step | Artifact | Built from |
+|---|---|---|
+| Final AAR | `sherpa-onnx-static-link-onnxruntime-1.13.8.aar`, SHA-256 `b22c3fc1b6a45666d28892bb2f7694beeb77a8362d7ebd77c1a5431ec9435471` | [k2-fsa/sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) commit `11afbd009a7f8c08f4bcf2fc1b265d0df4670fbf` (tag v1.13.8), workflow `.github/workflows/android-static.yaml`, [run 34486043621](https://github.com/k2-fsa/sherpa-onnx/actions/runs/34486043621) |
+| Static ONNX Runtime | `onnxruntime-android-arm64-v8a-static_lib-1.28.2.zip`, SHA-256 `bc68410f35f13df82c260830bf476ee5565f5efd0ec7622297829a929613c6c0` | [csukuangfj/onnxruntime-build](https://github.com/csukuangfj/onnxruntime-build) commit `6314c7b252578dc0b8ddd3919b593c4359812818`, [run 33741118129](https://github.com/csukuangfj/onnxruntime-build/actions/runs/33741118129), building ONNX Runtime tag v1.28.2, commit `33ca9628233dc8f002435e868d4c2e9f82766ca1` |
+
+Evidence for each link:
+
+- GitHub's digest for the AAR release asset equals the pin in `prepare_tts.py`, and
+  the successful tag run built it.
+- sherpa's `cmake/onnxruntime-android-aarch64-static.cmake` pins the runtime zip's hash.
+- That zip was uploaded at 2026-09-03T10:21:26Z, inside the upload step of the runtime
+  run above (10:21:25 to 10:21:32).
+- Build paths embedded in the library name both projects.
+
+For this Android build, `build-static_lib.sh` changes the ONNX Runtime tree in one way:
+it deletes the `SOVERSION` line of `cmake/onnxruntime.cmake`. ONNX Runtime's own patches
+are in its `cmake/patches` directory, inside `onnxruntime.zip`.
+
+Key build settings are in sherpa's `build-android-arm64-v8a.sh` (with `BUILD_SHARED_LIBS=OFF`)
+and the runtime workflow's `CMAKE_OPTIONS` (`-DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-21
+-DANDROID_STL=c++_shared -Donnxruntime_BUILD_UNIT_TESTS=OFF`). Both workflows use the
+GitHub runner's latest Android NDK.
+
+To rebuild: extract the archives, run the ONNX Runtime recipe, then sherpa's script with
+`SHERPA_ONNXRUNTIME_LIB_DIR` and `SHERPA_ONNXRUNTIME_INCLUDE_DIR` pointing at the result.
+Each CMake fetch accepts a local file, so it can use the archives here. Replace
+`.local-models/tts/sherpa-onnx.aar` with your AAR, or build one with
+`android/SherpaOnnxAar` in the sherpa source.
+
+## What is in the package
+
+`native_sources.json` lists 51 archives with URLs and SHA-256 hashes (about 780 MB):
+
+- **sherpa-onnx and what it fetches:** kaldi-native-fbank, kissfft, kaldi-decoder, kaldifst,
+  Eigen 3.4.0, OpenFst, simple-sentencepiece, nlohmann/json, piper-phonemize, hclust-cpp, espeak-ng.
+- **ONNX Runtime, its build recipe, and every source in its `cmake/deps.txt`.** This is
+  deliberately more than an Android CPU build compiles. Only the prebuilt `protoc` host
+  tools are left out; the protobuf source is included.
+
+Two entries are included because the binary doesn't show which revision was compiled:
+
+- espeak-ng: sherpa's pin `ed530aa` and the piper-phonemize default `7251208`.
+- OpenFst: sherpa's `v1.8.5-2026-07-09` and kaldifst's `v1.8.5-2026-04-10`.
+
+`android_dependencies.txt` lists the Java/Kotlin libraries in the APK, with exact
+versions. Their source is published with them on Google Maven and Maven Central.
+Speech and voice models are data, not program source; they stay under their own
+licences (see `THIRD_PARTY_NOTICES.md`).
+
+## Building the package (maintainers)
 
 ```
-python -I tools/prepare_native_sources.py <directory-outside-the-repository>
+python -I tools/prepare_native_sources.py <directory-outside-the-repository> <release-version>
 ```
 
-This fetches about 326 MB of source archives, not speech/language-model weights.
-It verifies SHA-256 and never extracts or executes downloaded source. It can
-reuse an existing verified collection. Do not commit this directory or advertise
-it as complete corresponding source yet.
+This verifies every archive, then writes `verbatim-<version>-native-sources.tar` for the
+GitHub Release. It never extracts or runs downloaded source, and it reuses verified
+files. Do not commit the output. Keep the release asset available for as long as the
+APK is offered, even if an upstream project removes an archive.
 
-## Before an APK is distributed
+## What was not done
 
-- Confirm the exact source, patches and build flags corresponding to the
-  prebuilt sherpa AAR and its statically linked ONNX Runtime. The source archive
-  collection includes sherpa's Android scripts and AAR release workflow.
-- Finish dependency closure: ONNX Runtime's `cmake/deps.txt` lists additional
-  sources; archive all applicable sources (including needed submodules) and
-  build/install scripts. Listing URLs or including third-party notices is not
-  itself proof that complete corresponding source has been supplied.
-- Include the matching Verbatim source, the native sources and build directions,
-  and any installation information required by the distribution arrangement.
-  Offer equivalent access next to the APK under GPLv3 section 6; maintain that
-  access even if upstream removes an archive. Ordinary Android build tools are
-  prerequisites; never include a private release-signing key or password.
-- Preserve copyright/attribution and applicable licence texts for code, voices
-  and model conversions. Do not assume a dataset licence alone settles every
-  model-provenance question.
-- Verify the final APK contains no Needle library or Whistle assets, has the
-  full licences, and passes signed-device recording/transcription/playback and
-  read-aloud tests. Back up the signing key outside the development laptop.
-
-This is a release engineering checklist, not legal advice or a claim that a
-complete native legal/privacy audit has been performed. APK publication stays
-pending until the corresponding-source review and remaining release checks
-are complete; local/private testing can continue.
+- Nobody rebuilt the library from this package and compared the result. GitHub's run
+  logs need a signed-in account and were not read, so the runtime link rests on the
+  timing above.
+- This is release engineering, not legal advice, and not a native privacy audit.
+- Never include a release-signing key or password. A self-built app is signed with
+  your own key, and Android then treats it as a different signer: uninstall first.
