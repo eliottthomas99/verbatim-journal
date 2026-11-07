@@ -4,6 +4,12 @@ A private voice journal for Android that you run yourself. Record a conversation
 
 **Your audio never leaves your phone.** Only the transcript text goes to the server, and the server is a computer you own, running an AI model you choose. There is no account, no hosted service and no cloud provider.
 
+<p align="center">
+  <img src="docs/screenshots/demo.gif" width="300" alt="Demo: a recording's summary and timed transcript, a spoken question answered, and its source opened">
+</p>
+
+*The 24-second silent demo: browse a recording's summary and timed transcript, see a spoken question answered, and open its source ([MP4 version](docs/screenshots/demo.mp4)). All demo content is invented; system bars are cropped out.*
+
 <p>
   <img src="docs/screenshots/journal.png" width="24%" alt="The journal, with summaries of recordings and notes">
   <img src="docs/screenshots/recording.png" width="24%" alt="A note with its summary and action items">
@@ -12,8 +18,6 @@ A private voice journal for Android that you run yourself. Record a conversation
 </p>
 
 *All content in these screenshots is invented.*
-
-**[Watch the 24-second silent demo](docs/screenshots/demo.mp4)** — browse a recording's summary and timed transcript, see a spoken question answered, and open its source. All demo content is invented; system bars are cropped out.
 
 ## How it works
 
